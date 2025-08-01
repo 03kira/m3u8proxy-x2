@@ -1,12 +1,12 @@
 {
   "version": 2,
   "builds": [
-    { "src": "proxy.js", "use": "@vercel/node" }
+    { "src": "m3u8-proxy.js", "use": "@vercel/node" }
   ],
   "routes": [
     {
-      "src": "proxy",
-      "dest": "proxy.js"
+      "src": "m3u8-proxy",
+      "dest": "m3u8-proxy.js"
     }
   ]
 }
