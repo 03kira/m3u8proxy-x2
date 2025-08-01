@@ -16,55 +16,60 @@ router.get('/proxy', async (req, res) => {
     const targetUrl = req.query.url;
 
     if (!targetUrl || !targetUrl.startsWith('http')) {
-        return res.status(400).json({ error: 'Invalid or missing URL' });
+        return res.status(400).json({ error: 'Invalid URL' });
     }
 
     try {
+        // Use the exact Referer from where the HLS stream is loaded
+        const referer = targetUrl.includes('/stream/') 
+            ? 'https://dwish.pro/e/p7m9omw9h5if' 
+            : 'https://dwish.pro/';
+
         const headers = {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             'Accept': '*/*',
-            'Referer': 'https://dwish.pro/',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Priority': 'u=1, i',
-            'Sec-Ch-Ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Brave";v="138"',
-            'Sec-Ch-Ua-Mobile': '?1',
-            'Sec-Ch-Ua-Platform': '"Android"',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': referer,
             'Sec-Fetch-Dest': 'empty',
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-origin',
-            'Sec-Gpc': '1',
-            'Cookie': 'lang=1'
+            'Connection': 'keep-alive',
+            'Cookie': 'lang=1', // Critical for session
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache',
+            // Cloudflare often checks these:
+            'Accept-Encoding': 'identity', // Avoid compression issues
         };
 
         const response = await axios.get(targetUrl, {
             headers,
             responseType: 'stream',
-            // Important: Don't automatically decompress the response
-            decompress: false
+            decompress: false, // Bypass automatic decompression
+            timeout: 10000, // 10s timeout
         });
 
-        res.set({
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Content-Type': response.headers['content-type'] || 'application/octet-stream',
-            'Cache-Control': 'no-cache',
-            // Forward important headers from the original response
-            ...(response.headers['content-encoding'] && { 
-                'Content-Encoding': response.headers['content-encoding'] 
-            })
+        // Forward critical headers
+        const allowedHeaders = [
+            'content-type',
+            'content-length',
+            'cache-control',
+            'last-modified',
+        ];
+
+        allowedHeaders.forEach(header => {
+            if (response.headers[header]) {
+                res.set(header, response.headers[header]);
+            }
         });
 
+        res.set('Access-Control-Allow-Origin', '*');
         response.data.pipe(res);
     } catch (err) {
-        console.error('Proxy Error:', err.message);
-        res.status(500).json({ 
-            error: 'Proxy failed', 
-            detail: err.message,
-            ...(err.response && { status: err.response.status })
+        console.error('Proxy Error:', err.response?.status, err.message);
+        res.status(err.response?.status || 500).json({
+            error: 'Proxy failed',
+            status: err.response?.status,
+            details: err.message,
         });
     }
 });
