@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 
+const app = express();
 const router = express.Router();
 
 // Enable global CORS
@@ -46,8 +47,8 @@ router.get('/proxy', async (req, res) => {
     }
 });
 
-// Start server
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-    console.log(`✅ API server running at http://localhost:${PORT}`);
-});
+// Mount the router
+app.use('/', router);
+
+// Export the app for Vercel
+module.exports = app;
