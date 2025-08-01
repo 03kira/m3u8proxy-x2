@@ -1,9 +1,17 @@
-// video-proxy.js
 const express = require('express');
+const cors = require('cors');
 const axios = require('axios');
-const app = express();
 
-app.get('/proxy', async (req, res) => {
+const router = express.Router();
+
+// Enable global CORS
+app.use(cors());
+
+router.get("/", (req, res) => {
+  res.end(`Welcome!`);
+});
+
+router.get('/proxy', async (req, res) => {
     const targetUrl = req.query.url;
 
     if (!targetUrl || !targetUrl.startsWith('http')) {
@@ -11,24 +19,23 @@ app.get('/proxy', async (req, res) => {
     }
 
     try {
-        // Proxy headers (simulate a real browser request)
         const headers = {
             'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36',
             'Accept': '*/*',
-            'Referer': 'https://dwish.pro/', // you can replace this if needed
-            'Accept-Encoding': 'identity', // don't gzip video segments
+            'Referer': 'https://dwish.pro/',
+            'Accept-Encoding': 'identity',
         };
 
-        // Stream response
         const response = await axios.get(targetUrl, {
             headers,
             responseType: 'stream',
         });
 
-        // Set CORS headers
         res.set({
             'Access-Control-Allow-Origin': '*',
-            'Content-Type': response.headers['content-type'],
+            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Content-Type': response.headers['content-type'] || 'application/octet-stream',
             'Cache-Control': 'no-cache',
         });
 
@@ -39,7 +46,8 @@ app.get('/proxy', async (req, res) => {
     }
 });
 
+// Start server
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-    console.log(`🚀 Video proxy running on http://localhost:${PORT}`);
+    console.log(`✅ API server running at http://localhost:${PORT}`);
 });
